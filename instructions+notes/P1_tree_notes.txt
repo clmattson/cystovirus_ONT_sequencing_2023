@@ -1,0 +1,47 @@
+P1 tree notes
+
+#get P1 protein hits:
+
+ blastn -query /mnt/data0/MinION_reads/Cysto22_051023/Cysto22_051023/20230510_0902_MN23913_FAW92711_bb431c3a/runthru/phylogenetics/noYY/L_ALL_noYY_named_contigs_blast_len.fasta -subject P1_refs.fasta -outfmt "6 qseqid qseq" -max_target_seqs 1 -max_hsps 1 >> P1_blastout_test
+
+#manually convert to fasta bc I dont have time to look up how to do that automatically....
+
+mafft --auto --adjustdirectionaccurately --maxiterate 1000 P1_blastout_test.fasta > P1_blastout_test.mafft.fasta
+
+bash run_mafft_P1.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/phylogenetics -c P1_3runs_contigs_blastout.fasta -x /mnt/data0/cysto_refs/phi6_P1.fasta -l /mnt/data0/cysto_refs/P1_refs.fasta
+
+
+
+
+new approach: run prokka on all L contigs, cat gbks together, move to web feature extractor, blast resulting seqs against P1 refs,then extract hits
+
+split large genbank file:  
+(1st open in notepad, replace the https line to get rid oof //, then:)
+
+csplit L_ALL_contigs_3runs_noReps_bln.fasta_prokka.gbk ////+1 {27}
+
+change filename to second item (locus)
+for i in xx*; do awk '/LOCUS/{x=$2".gbk"}{print > x;}' $i; done
+
+add the file name to the genes and the locus tag (sed -i means edit inplace)
+
+ for i in *.gbk; do bn=$(basename $i .gbk); sed -i 's/gene.*/&_'${bn}'"/' $i; done
+ for i in *.gbk; do bn=$(basename $i .gbk); sed -i 's/locus_tag.*/&_'${bn}'"/' $i; done
+
+cat edited gbks back otgether:
+cat *.gbk >> all_L.gbk
+
+#plug into the online gbk feature extractor
+#find and replace to clean up a bit in notepad,
+# then remove newlines:
+awk '/^[>;]/ { if (seq) { print seq }; seq=""; print } /^[^>;]/ { seq = seq $0 } END { print seq }' L_contigs_extracted_features.fasta >>  L_contigs_extracted_features_clean.fasta
+#get rid of complete seqs by keeping only seqs with 'CDS' in the header:
+grep -w "CDS" -A 1 L_contigs_extracted_features_clean.fasta >> L_contig_features.fasta
+
+#resulting file has random -- , clean up w find and replace in notepad and then remoove newlines again
+
+ awk '/^[>;]/ { if (seq) { print seq }; seq=""; print } /^[^>;]/ { seq = seq $0 } END { print seq }' L_contigs_features.fasta >>  L_contigs_features_clean.fasta
+
+
+put resulting features file back into rosalind and blast to P1 refs, output list of read names
+blastn -query L_contigs_features.fasta -subject /mnt/data0/cysto_refs/P1_refs.fasta -outfmt '6 qseqid' -max_target_seqs 1 -max_hsps 1 >> P1_to_L_feat_blast.txt
