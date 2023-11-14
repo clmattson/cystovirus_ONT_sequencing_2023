@@ -1,0 +1,154 @@
+pac assembly notes? 
+
+#can we assemble just pac? 
+
+#get list of reads for one barcode that contain very 5' region:
+#sed line adds barcode# to the line 
+
+for barcode in ./barcode*/*all*.fasta; do bn=$(basename $barcode); blastn -query ${barcode} -subject /mnt/data0/first_50_db.fasta -outut.csv; sed "s/$/,"${bn}"/" ./output/${bn}_f50_temp_blast_out.csv > ./output/${bn}_f50_blast_out.csv; done
+ 
+cd output/
+
+rm *temp*.csv
+ls
+cat *f50*.csv >> f50_all_barcodes_blast_out.csv
+
+
+#from ${bn}_f50_blast_out.csv get list of reads 
+awk -F"," '{print $1}' barcode06.all.fastq.fasta_f50_blast_out.csv > barcode06_f50_readlist.txt
+
+#make fasta with only the above reads:
+
+cat output/barcode06_f50_readlist.txt | awk '{gsub("_","\\_",$0);$0="(?s)^>"$0".*?(?=\\n(\\z|>))"}1' | pcregrep -oM -f - barcode06/*all*.fasta > barcode06/barcode06_f50_reads.fasta
+
+#assemble just that file: 
+
+
+
+for barcode in *arcode06; do bn=$(basename $barcode); echo; echo ${bn}; echo; canu -p ${bn}_f50 -d ${barcode}/${bn}_canu_assembly_f50 genomeSize=1000 -minReadLength=400 -minOverlapLength=400 -nanopore ${barcode}/barcode06_f50_reads.fasta; done
+
+#didnt work, come back to this!!
+
+
+
+
+
+for i in ${demux_pass_all}/barcode*/*.fasta; do blastn -query $i -subject ${cysto_blast_db} -outfmt '6 delim=,' -max_target_seqs 1 -max_hsps 1 >> ${demux_pass_all}/output/cysto_blast_out.csv; done
+
+
+#ok restarting: 
+
+get fastas in correct complement/orientation by deleting all the '-' from the alignent file.  (manually, in notepad),
+then remove line breaks:
+% awk '!/^>/ { printf "%s", $0; n = "\n" } 
+/^>/ { print n $0; n = "" }
+END { printf "%s", n }
+' input.fasta
+
+uploaded to rosalind
+
+now, get only X nucleotides: 
+seqkit subseq -r 1:100 L_ALL_noYY_named_contigs_blast_RC.fasta > L_f100_ALL_noYY_named_contigs_blast_RC.fasta
+
+make pac DB from refs only: 
+ seqkit subseq -r 1:250 ../cystovirus_L_db_noYY.fasta > L_pac_refs.fasta
+
+in demuxed:
+ for barcode in ./barcode*/*all*.fasta; do bn=$(basename $barcode); blastn -query ${barcode} -subject /mnt/data0/cysto_refs/pac/L_f100_ALL_noYY_named_contigs_blast_RC.fasta -outfmt '6 delim=,' >> ./output/${bn}__temp_blast_out.csv; sed "s/$/,"${bn}"/" ./output/${bn}__temp_blast_out.csv > ./output/${bn}_f100_RC_blast_out.csv; done
+
+rm *temp*
+
+
+
+#from ${bn}_f100_RC_blast_out.csv get list of reads matching the first 100 bp of the assemblies
+
+for barcode in ./barcode*/*all*.fasta; do bn=$(basename $barcode); blastn -query ${barcode} -subject /mnt/data0/cysto_refs/pac/L_f100_ALL_noYY_named_contigs_blast_RC.fasta -outfmt "6 qseqid" >> ${bn}_f100_RC_blast_out.csv; done
+
+#make fasta with only the above reads:
+
+
+for file in output/*.all.fastq.fasta_f100_RC_blast_out.csv; do barcode=$(basename $file .all.fastq.fasta_f100_RC_blast_out.csv);
+cat ${file} | awk '{gsub("_","\\_",$0);$0="(?s)^>"$0".*?(?=\\n(\\z|>))"}1' | pcregrep -oM -f - ./${barcode}/*all*.fasta > ${barcode}/${barcode}_f100_RC_blast_reads.fasta; done
+
+
+#barcode07 actually has the most hits:
+
+for barcode in *arcode07; do bn=$(basename $barcode); echo; echo ${bn}; echo; canu -p ${bn}_f100 -d ${barcode}/${bn}_canu_assembly_f100 genomeSize=1000 -minReadLength=100 -minOverlapLength=100 -nanopore ${barcode}/barcode07_f100_RC_blast_reads.fasta; done
+
+
+
+#map the blast out reads to assembly:
+#for barcode in barcode*; do bn=$(basename $barcode); 
+
+
+#minimap2 -x map-ont -k15 -a -t 8 barcode07*Canu*MRL*/medaka/barcode07_medaka_consensus.fasta barcode07_f100_RC_blast_reads.fasta > barcode07_f100_assembly_minimap; 
+#samtools view --threads 24 -b -o barcode07_f100_assembly_minimap.bam barcode07_f100_assembly_minimap;
+samtools sort -o barcode07_f100_assembly_minimap.sorted.bam -T barcode07_f100_assembly_samtools_temp_dir --threads 24 barcode07_f100_assembly_minimap.bam
+samtools fasta -n -F 4 barcode07_f100_assembly_minimap.sorted.bam > barcode07_f100_assembly_mapped.bam
+
+
+minimap2 -x map-ont -k15 -a -t 8 /mnt/data0/cysto_refs/phi6L.fasta barcode07_f100_RC_blast_reads.fasta > barcode07_f100_phi6_minimap; 
+#samtools view --threads 24 -b -o barcode07_f100_phi6_minimap.bam barcode07_f100_phi6_minimap;
+samtools sort -o barcode07_f100_phi6_minimap.sorted.bam -T barcode07_f100_phi6_samtools_temp_dir --threads 24 barcode07_f100_phi6_minimap.bam
+samtools fasta -n -F 4 barcode07_f100_phi6_minimap.sorted.bam > barcode07_f100_phi6_mapped.bam
+
+
+
+
+
+______work on cysto_newprot_test actual phi6 samples:
+
+
+phi6 in this experiment was barcodes 3 4 and 5, make array:  
+barcode345=("barcode03" "barcode04" "barcode05")
+
+
+make ref file of all 3 phi6pac regions:
+seqkit subseq -r 1:300 phi6L.fasta >> phi6_L_pac.fasta
+seqkit subseq -r 1:300 phi6M.fasta >> phi6_M_pac.fasta
+seqkit subseq -r 1:300 phi6S.fasta >> phi6_S_pac.fasta and move to cysto_refs/pac
+
+
+for barcode in ${barcode345[@]}; do blastn -query ${barcode}/"${barcode}".all.fastq.fasta -subject /mnt/data0/cysto_refs/pac/phi6_L_pac.fasta -outfmt '6 delim=,' >> ./output/${barcode}_temp_blast_L_out.csv; sed "s/$/,"${barcode}"/" ./output/${barcode}_temp_blast_L_out.csv >> ./output/${barcode}_blast_L_out.csv; done
+
+
+for barcode in ${barcode345[@]}; do blastn -query ${barcode}/"${barcode}".all.fastq.fasta -subject /mnt/data0/cysto_refs/pac/phi6_S_pac.fasta -outfmt '6 qseqid >> ./output/${barcode}_temp_blast_S_list.txt; sed "s/$/,"${barcode}"/" ./output/${barcode}_temp_blast_S_list.txt >> ./output/${barcode}_blast_S_list.txt; done
+
+
+do for each, this time list of reads only!
+
+for barcode in ${barcode345[@]}; do blastn -query ${barcode}/"${barcode}".all.fastq.fasta -subject /mnt/data0/cysto_refs/pac/phi6_M_pac.fasta -outfmt '6 qseqid' >> ./output/${barcode}_blast_M_list.txt; done
+
+
+get reads from files using lists: 
+
+
+for barcode in ${barcode345[@]}; do cat ./output/${barcode}_blast_L_list.txt | awk '{gsub("_","\\_",$0);$0="(?s)^>"$0".*?(?=\\n(\\z|>))"}1' | pcregrep -oM -f - ${barcode}/"${barcode}".all.fastq.fasta > ./output/"${barcode}"_L_pac_blast.fasta; done
+for barcode in ${barcode345[@]}; do cat ./output/${barcode}_blast_M_list.txt | awk '{gsub("_","\\_",$0);$0="(?s)^>"$0".*?(?=\\n(\\z|>))"}1' | pcregrep -oM -f - ${barcode}/"${barcode}".all.fastq.fasta > ./output/"${barcode}"_M_pac_blast.fasta; done
+for barcode in ${barcode345[@]}; do cat ./output/${barcode}_blast_S_list.txt | awk '{gsub("_","\\_",$0);$0="(?s)^>"$0".*?(?=\\n(\\z|>))"}1' | pcregrep -oM -f - ${barcode}/"${barcode}".all.fastq.fasta > ./output/"${barcode}"_S_pac_blast.fasta; done
+
+lets see if pac even in there? 
+
+map phi 6 sequenced to phi6 ref
+
+#1 map to host with minimmap2
+#minimap is in conda env seqqc
+
+#host: p.savastanoi.ref.nbrks.fasta
+for barcode in ${barcode345[@]}; do minimap2 -x map-ont -k15 -a -t 8 /mnt/data0/cysto_refs/pac/phi6_L_pac.fasta ${barcode}/"${barcode}".all.fastq.fasta > ./output/${barcode}_L_pac_minimap;
+samtools view --threads 24 -b -o ./output/${barcode}_L_pac.bam ./output/${barcode}_L_pac_minimap;
+samtools sort -o ./output/${barcode}_L_pac_sorted.bam -T ./output/${barcode}_L_pac_temp --threads 24 ./output/${barcode}_L_pac.bam;
+#view mapping info for reads
+#filter mapped (host) reads with samtools
+samtools fasta -n -F 4 ./output/${barcode}_L_pac_sorted.bam > $./output/${barcode}_L_pac_mapped.fasta;
+done
+
+for barcode in ${barcode345[@]}; do minimap2 -x map-ont -k15 -a -t 8 /mnt/data0/cysto_refs/pac/phi6_L_pac.fasta ${barcode}/"${barcode}".all.fastq.fasta > ./output/${barcode}_L_pac_minimap; samtools view --threads 24 -b -o ./output/${barcode}_L_pac.bam ./output/${barcode}_L_pac_minimap; samtools sort -o ./output/${barcode}_L_pac_sorted.bam -T ./output/${barcode}_L_pac_temp --threads 24 ./output/${barcode}_L_pac.bam; samtools fasta -n -F 4 ./output/${barcode}_L_pac_sorted.bam > ./output/${barcode}_L_pac_mapped.fasta; done
+
+
+
+
+
+
+
+while read sequence num length; do tempseq="$(grep -A1 "$seqeunce $num" test1.fasta)"; echo ${tempseq} > temp.fasta; seqkit subseq --region "1:${length}" temp.fasta; done < test.txt
