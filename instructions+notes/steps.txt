@@ -1,0 +1,135 @@
+steps - all!
+
+
+1) initial processing of data:
+
+#may run:
+bash initial_seq_processing.sh -p /mnt/data0/MinION_reads/Cysto22_051023/Cysto22_051023/20230510_0902_MN23913_FAW92711_bb431c3a/fast5_pass/fast5_pass_all -f /mnt/data0/MinION_reads/Cysto22_051023/Cysto22_051023/20230510_0902_MN23913_FAW92711_bb431c3a/fast5_fail/fast5_fail_all -b /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto22_051023/fastq_hac_pass -l /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto22_051023/fastq_hac_fail -d /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto22_051023/demuxed -c /mnt/data0/cysto_refs/wild.cysto.ref.genomes.fasta -h /mnt/data0/cysto_refs/p.savastanoi.ref.nbrks.fasta
+
+#june run:
+bash initial_seq_processing.sh -p /mnt/data0/MinION_reads/Cysto96_062023/Cysto96_062023/20230620_1616_MN23913_FAX02796_d94d561a/fast5_pass -f /mnt/data0/MinION_reads/Cysto96_062023/Cysto96_062023/20230620_1616_MN23913_FAX02796_d94d561a/fast5_fail -b /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto96_062023/fastq_hac_pass -l /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto96_062023/fastq_hac_fail -d /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto96_062023/demuxed -c /mnt/data0/cysto_refs/wild.cysto.ref.genomes.fasta -h /mnt/data0/cysto_refs/p.savastanoi.ref.nbrks.fasta
+
+#fall (Sept) run: 
+bash initial_seq_processing.sh -p /mnt/data0/MinION_reads/cysto_newprot_test_09022022/20220902_1821_MN23913_FAT58262_9332e35c/fast5_pass -f /mnt/data0/MinION_reads/cysto_newprot_test_09022022/20220902_1821_MN23913_FAT58262_9332e35c/fast5_fail -b /mnt/data0/MinION_reads/analysis_cysto_GRC/cysto_newprot_test_09022022/fastq_hac_pass -l /mnt/data0/MinION_reads/analysis_cysto_GRC/cysto_newprot_test_09022022/fastq_hac_fail -d /mnt/data0/MinION_reads/analysis_cysto_GRC/cysto_newprot_test_09022022/demuxed -c /mnt/data0/cysto_refs/wild.cysto.ref.genomes.fasta -h /mnt/data0/cysto_refs/p.savastanoi.ref.nbrks.fasta
+
+
+
+2) assembly
+
+2.1) mamba activate medaka
+2.2)#important: dont put slash at end of file path
+bash cysto_assembly.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto22_051023/demuxed -h /mnt/data0/cysto_refs/p.savastanoi.ref.nbrks.fasta -a CanuAssembly_MRL300_MOL200
+
+bash cysto_assembly.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto96_062023/demuxed -h /mnt/data0/cysto_refs/p.savastanoi.ref.nbrks.fasta -a CanuAssembly_MRL300_MOL200
+
+bash cysto_assembly.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/cysto_newprot_test_09022022/demuxed -h /mnt/data0/cysto_refs/p.savastanoi.ref.nbrks.fasta -a CanuAssembly_MRL300_MOL200
+
+3)move assemblies to own directory
+
+cp barcode*/*Canu*MRL*MOL*/medaka/*consensus.fasta ./asmblys_sorted_aligned
+
+4)processing assemblies
+
+conda activate /home/user/miniconda3/envs/cphylo/
+
+bash sort_assemblies.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto22_051023/asmblys_sorted_aligned -n _medaka_consensus.fasta -s /mnt/data0/cysto_refs/phi6S.fasta -m /mnt/data0/cysto_refs/phi6M.fasta -l /mnt/data0/cysto_refs/phi6L.fasta
+
+bash sort_assemblies.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto96_062023/asmblys_sorted_aligned -n _medaka_consensus.fasta -s /mnt/data0/cysto_refs/phi6S.fasta -m /mnt/data0/cysto_refs/phi6M.fasta -l /mnt/data0/cysto_refs/phi6L.fasta
+
+bash sort_assemblies.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/cysto_newprot_test_09022022/asmblys_sorted_aligned -n _medaka_consensus.fasta -s /mnt/data0/cysto_refs/phi6S.fasta -m /mnt/data0/cysto_refs/phi6M.fasta -l /mnt/data0/cysto_refs/phi6L.fasta
+
+
+
+5) rename headers w isolate names:
+
+bash isolate_names.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto22_051023/asmblys_sorted_aligned -c _contigs_blast_len.fasta -s Cysto22_051023_sample_key_S.txt -m Cysto22_051023_sample_key_M.txt -l Cysto22_051023_sample_key_L.txt
+
+bash isolate_names.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto96_062023/asmblys_sorted_aligned -c _contigs_blast_len.fasta -s Cysto96_062023_sample_key_S.txt -m Cysto96_062023_sample_key_M.txt -l Cysto96_062023_sample_key_L.txt
+
+bash isolate_names.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/cysto_newprot_test_09022022/asmblys_sorted_aligned -c _contigs_blast_len.fasta -s cysto_newprot_test_09022022_sample_key_S.txt -m cysto_newprot_test_09022022_sample_key_M.txt -l cysto_newprot_test_09022022_sample_key_L.txt
+
+
+
+6.0) conda activate /home/user/miniconda3/envs/cphylo/
+
+6.1) 
+bash run_mafft.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto22_051023/asmblys_sorted_aligned -c _named_contigs_blast_len.fasta -x /mnt/data0/cysto_refs/phi6S.fasta -y /mnt/data0/cysto_refs/phi6M.fasta -z /mnt/data0/cysto_refs/phi6L.fasta -s  /mnt/data0/cysto_refs/cystovirus_S_db.fasta -m /mnt/data0/cysto_refs/cystovirus_M_db.fasta -l /mnt/data0/cysto_refs/cystovirus_L_db.fasta
+
+bash run_mafft.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto96_062023/asmblys_sorted_aligned -c _named_contigs_blast_len.fasta -x /mnt/data0/cysto_refs/phi6S.fasta -y /mnt/data0/cysto_refs/phi6M.fasta -z /mnt/data0/cysto_refs/phi6L.fasta -s  /mnt/data0/cysto_refs/cystovirus_S_db.fasta -m /mnt/data0/cysto_refs/cystovirus_M_db.fasta -l /mnt/data0/cysto_refs/cystovirus_L_db.fasta
+
+bash run_mafft.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/cysto_newprot_test_09022022/asmblys_sorted_aligned -c _named_contigs_blast_len.fasta -x /mnt/data0/cysto_refs/phi6S.fasta -y /mnt/data0/cysto_refs/phi6M.fasta -z /mnt/data0/cysto_refs/phi6L.fasta -s  /mnt/data0/cysto_refs/cystovirus_S_db.fasta -m /mnt/data0/cysto_refs/cystovirus_M_db.fasta -l /mnt/data0/cysto_refs/cystovirus_L_db.fasta
+
+
+mkdir /mnt/data0/MinION_reads/analysis_cysto_GRC/phylogenetics
+cp /mnt/data0/MinION_reads/analysis_cysto_GRC/*/asmblys_sorted_aligned/*ALL_named_contigs_blast_len.fasta* ./phylogenetics
+
+for i in *ALL_named_contigs_blast_len.fasta*; 
+mv L_ALL_named_contigs_blast_len.fasta L_cnpt09022022_ALL_contigs_bln.fasta
+
+
+cat /*/asmblys_sorted_aligned/L_named_contigs_blast_len.fasta >> L_3runs_allcontigs_bln.fasta
+
+
+7.0) conda activate /home/user/miniconda3/envs/annotate
+7.1) 
+bash run_prokka.sh -p /mnt/data0/MinION_reads/Cysto22_051023/Cysto22_051023/20230510_0902_MN23913_FAW92711_bb431c3a/runthru/asmblys_sorted_aligned/mafft -c _ALL_named_contigs_blast_len.fasta
+
+
+
+
+
+
+
+
+
+#go back and combine all runs, looks like allowing 1 barcode only included negatice controls for the May run, keep two barcode demuxig for that one
+
+
+4)processing assemblies - resort the 05 two barcode data to stop excluding by 3 contigs/file
+
+conda activate /home/user/miniconda3/envs/cphylo/
+
+bash sort_assemblies.sh -p /mnt/data0/MinION_reads/Cysto22_051023/Cysto22_051023/20230510_0902_MN23913_FAW92711_bb431c3a/runthru/phylogenetics -n _medaka_consensus.fasta -s /mnt/data0/cysto_refs/phi6S.fasta -m /mnt/data0/cysto_refs/phi6M.fasta -l /mnt/data0/cysto_refs/phi6L.fasta
+
+cp *contigs_blast* /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto22_051023_2bcd/
+
+5) rename headers w isolate names:
+
+bash isolate_names.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/Cysto22_051023_2bcd/asmblys_sorted_aligned -c _contigs_blast_len.fasta -s Cysto22_051023_sample_key_S.txt -m Cysto22_051023_sample_key_M.txt -l Cysto22_051023_sample_key_L.txt
+
+dos2unix all the .fasta files to get rid of the ^M stuff and then add run name to each sequence header:
+
+'s/>.*/&_C96062023/' S_named_contigs_blast_len.fasta >> S_namedfile_contigs_blast_len.fasta
+
+
+
+6.0)realign with seqs from all runs, keep dups for now (with run names)
+
+ conda activate /home/user/miniconda3/envs/cphylo/
+
+6.1) 
+bash run_mafft.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/phylogenetics -c _contigs_3runs_filenames_bln.fasta -x /mnt/data0/cysto_refs/phi6S.fasta -y /mnt/data0/cysto_refs/phi6M.fasta -z /mnt/data0/cysto_refs/phi6L.fasta -s  /mnt/data0/cysto_refs/cystovirus_S_db.fasta -m /mnt/data0/cysto_refs/cystovirus_M_db.fasta -l /mnt/data0/cysto_refs/cystovirus_L_db.fasta
+
+
+
+
+make trees locally, all duplicate seqs appear in same branches!! good ! keep only longest of any dups
+
+
+re align without dups: 
+
+
+bash run_mafft.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/phylogenetics/noReps -c _contigs_3runs_noReps_bln.fasta -x /mnt/data0/cysto_refs/phi6S.fasta -y /mnt/data0/cysto_refs/phi6M.fasta -z /mnt/data0/cysto_refs/phi6L.fasta -s  /mnt/data0/cysto_refs/cystovirus_S_db.fasta -m /mnt/data0/cysto_refs/cystovirus_M_db.fasta -l /mnt/data0/cysto_refs/cystovirus_L_db.fasta
+
+
+
+
+P1: see P1 notes
+
+
+full genomes for reassortment ? 
+
+
+bash run_mafft.sh -p /mnt/data0/MinION_reads/analysis_cysto_GRC/phylogenetics/fullgenomes -c _contigs_FG.fasta -x /mnt/data0/cysto_refs/phi6S.fasta -y /mnt/data0/cysto_refs/phi6M.fasta -z /mnt/data0/cysto_refs/phi6L.fasta -s  /mnt/data0/cysto_refs/cystovirus_S_db.fasta -m /mnt/data0/cysto_refs/cystovirus_M_db.fasta -l /mnt/data0/cysto_refs/cystovirus_L_db.fasta
+
+
