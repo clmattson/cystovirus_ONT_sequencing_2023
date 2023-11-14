@@ -1,0 +1,13 @@
+mafft alignment notes
+
+mafft --maxiterate 1000 --localpair linsi s_contigs_blast.fasta > s_contigs_blast_mafft.fasta
+
+
+
+
+
+#linsi 
+#reverse complement!!
+#put reference at top so the whole thing will be in the right direction/complement
+
+mafft-linsi --adjustdirectionaccurately --maxiterate 1000 --localpair l_contigs_blast_Wphi6.fasta > l_contigs_blast_Wphi6_mafft_wRC.fast
